@@ -4,9 +4,10 @@ metadata:
   name: cephfs-pv
 spec:
   capacity:
-    storage: 10Gi
+    storage: 200Gi
   accessModes:
     - ReadWriteMany
+    - ReadWriteOnce
   cephfs:
     monitors:
       - 192.168.100.247:6789
@@ -14,4 +15,4 @@ spec:
     secretRef:
       name: ceph-secret-admin
     readOnly: false
-  persistentVolumeReclaimPolicy: Recycle
+  persistentVolumeReclaimPolicy: Retain
