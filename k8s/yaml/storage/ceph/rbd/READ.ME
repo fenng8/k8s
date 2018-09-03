@@ -1,0 +1,12 @@
+1. ceph cluster: https://www.lijiawang.org/posts/intsall-ceph.html
+2. ceph auth list --> client.admin --> key --> base64
+3. ceph-secret.yaml
+4. ceph-storageclass.yaml
+5. mariadb-pvc-use-rbd.yaml
+   如果因为在创建pvc时出现pending且日志中显示无rbd时:
+   git clone https://github.com/kubernetes-incubator/external-storage.git  	
+   cd external-storage/ceph/rbd/deploy/
+   kubectl apply -f rbac
+6. mariadb-deployment-stateful.yaml
+
+

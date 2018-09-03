@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mariadb-pod-2
+spec:
+  containers:
+  - name: mariadb-container-2
+    image: mariadb:10.1
+    env:
+    - name: MYSQL_ROOT_PASSWORD
+      value: "1qazxsw2"
+    volumeMounts:
+    - name: config
+      mountPath: /etc/mysql/conf.d/k8s.cnf
+      subPath: k8s.cnf    #not overrive directory conf.d,others exist,but can't autoupdate from configmap
+  volumes:
+    - name: config
+      configMap:
+        name: example-mariadb-config
+        items:
+        - key: mariadb-config
+          path: k8s.cnf
+        

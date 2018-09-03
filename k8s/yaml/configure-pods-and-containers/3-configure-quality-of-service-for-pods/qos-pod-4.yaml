@@ -1,0 +1,15 @@
+#two containers with Burstable
+apiVersion: v1
+kind: Pod
+metadata:
+  name: qos-demo-4
+  namespace: default
+spec:
+  containers:
+  - name: qos-demo-4-ctr-1
+    image: nginx
+    resources:
+      requests:
+        memory: "200Mi"
+  - name: qos-demo-4-ctr-2
+    image: redis
