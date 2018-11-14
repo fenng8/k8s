@@ -1,0 +1,129 @@
+
+1, Ceph基础知识和基础架构认识 ,  ceph(存储之块设备、文件系统、对象存储)
+
+2, 基于CentOS 7.3 安装Ceph Jewel 10.2.9
+
+本地环境
+
+    master: 192.168.100.246
+    node1: 192.168.100.247
+    node2: 192.168.100.248
+    node3: 192.168.100.249
+
+3, 块设备的客户端配置(CentOS7)
+
+    cat >/etc/yum.repos.d/ceph.repo <<EOF   #配置ceph源,需要epel源
+
+[ceph]
+name=Ceph packages for $basearch
+baseurl=http://mirrors.163.com/ceph/rpm-jewel/el7/$basearch
+enabled=1
+gpgcheck=1
+priority=1
+type=rpm-md
+gpgkey=http://mirrors.163.com/ceph/keys/release.asc
+
+[ceph-noarch]
+name=Ceph noarch packages
+baseurl=http://mirrors.163.com/ceph/rpm-jewel/el7/noarch
+enabled=1
+gpgcheck=1
+priority=1
+type=rpm-md
+gpgkey=http://mirrors.163.com/ceph/keys/release.asc
+
+[ceph-source]
+name=Ceph source packages
+baseurl=http://mirrors.163.com/ceph/rpm-jewel/el7/SRPMS
+enabled=0
+gpgcheck=1
+type=rpm-md
+gpgkey=http://mirrors.163.com/ceph/keys/release.asc
+priority=1
+
+EOF
+
+    2.  yum install ceph -y   #安装ceph包
+
+    3.  复制master或osd任意节点的/etc/ceph文件夹到本机同路径下，给予可访问集群权限
+
+    4. ceph -s  #在本机上执行，查看集群状态;验证3是否成功
+
+    5. ceph osd pool create internal 128 #创建一个名字叫internal的pool #ceph osd lspools #rbd list #rbd info
+
+        rbd create internal/foo -size 30G #创建30G,名字为foo的镜像
+
+        rbd map internal/foo  #映射镜像到本机块设备  (rbd feature disable internal/foo exclusive-lock, object-map, fast-diff, deep-flatten# 关闭不必要的镜像功能,否则无法map)
+
+        mkfs.ext4 /dev/rbd0 (同/dev/rbd/internal/foo)
+
+        mkdir /mnt/rbd;  mount -t ext4 /dev/rbd0 /mnt/rbd
+
+    6.  可悲的是重启时机器起不来了，在关机阶段无法umount ,开机阶段无法自动mount .重启后map消失，无法在本地查看到块设备/dev/rbd0,解决办法：
+
+       cat >/usr/local/bin/rbd-mount <<EOF
+
+#!/bin/bash
+# Script Author: http://bryanapperson.com/
+# Change with your pools name
+export poolname=internal
+
+# CHange with your disk image name
+export rbdimage=foo
+
+# Mount Directory
+export mountpoint=/mnt/rbd
+
+# Image mount/unmount and pool are passed from the systems service as arguments
+# Determine if we are mounting or unmounting
+if [ "$1" == "m" ]; then
+   modprobe rbd
+   rbd feature disable $poolname/$rbdimage exclusive-lock object-map fast-diff deep-flatten
+   rbd map $poolname/$rbdimage --id admin --keyring /etc/ceph/ceph.client.admin.keyring
+   mkdir -p $mountpoint
+   mount /dev/rbd/$poolname/$rbdimage $mountpoint
+fi
+if [ "$1" == "u" ]; then
+   umount $mountpoint
+   rbd unmap /dev/rbd/$poolname/$rbdimage
+fi
+
+EOF
+
+chmod +x /usr/local/bin/rbd-mount
+
+cat >/etc/systemd/system/rbd-mount.service <<EOF
+
+[Unit]
+
+Description=RADOS block device mapping for $rbdimage in pool $poolname"
+
+Conflicts=shutdown.target
+
+Wants=network-online.target
+
+After=NetworkManager-wait-online.service
+
+[Service]
+
+Type=oneshot
+
+RemainAfterExit=yes
+
+ExecStart=/usr/local/bin/rbd-mount m
+
+ExecStop=/usr/local/bin/rbd-mount u
+
+[Install]
+
+WantedBy=multi-user.target
+
+EOF
+
+systemctl daemon-reload; systemctl enable rbd-mount.service  #这时重启就可以正常用啦
+
+
+参考：http://int32bit.me/2016/05/19/Ceph-Pool%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/
+
+           https://www.howtoforge.com/tutorial/using-ceph-as-block-device-on-centos-7/
+备注:后来的测试过程中，第6部多少还有问题，可改用rbdmap实现。之前步骤照旧
