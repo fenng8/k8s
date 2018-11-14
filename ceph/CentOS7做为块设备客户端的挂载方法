@@ -126,4 +126,4 @@ systemctl daemon-reload; systemctl enable rbd-mount.service  #这时重启就可
 参考：http://int32bit.me/2016/05/19/Ceph-Pool%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/
 
            https://www.howtoforge.com/tutorial/using-ceph-as-block-device-on-centos-7/
-备注:后来的测试过程中，第6部多少还有问题，可改用rbdmap实现。之前步骤照旧
+备注:后来的测试过程中，第6部多少还有问题，可改用rbdmap实现。之前步骤照旧，额外的，在docker.service中的After行最后添加rbdmap.service
